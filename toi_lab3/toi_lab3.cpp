@@ -3,7 +3,7 @@
 using namespace std;
 
 int sn = 0;
-string s = "(c+-d)*((1+d))";
+string s = "200.892*(-8.6)";//200.892*(-8.6), ((a+b)*(-8.6)), (-c)*(-(1+d)), (c)*(-(1+d))", (c* (-(1 + d)) ? c * (1 + d) - ? ÏĞÎÁÅËÛ, ÂÑ¨ ÎÒĞÈÖ Â ÑÊÎÁÊÀÕ ÄÁ    , a8, 10,2+(-d), (9+a>b-1)`,(9+a)>(b-1)
 bool bad = false;
 
 void expr();
@@ -16,12 +16,24 @@ void next() {
 }
 
 void fact() {
+    if (sn == -1) {
+        bad = true;
+        return;
+    }
     if (s[sn] == '(') {
         next();
-        expr();
+        if (s[sn] == '-') {
+            next();
+            fact();
+        }
+        else expr();
         if (sn == -1 || s[sn] != ')') bad = true;
     }
-    else if (isdigit(s[sn]) || isalpha(s[sn])) {}
+    else if (isalpha(s[sn])) {}
+    else if (isdigit(s[sn])) {
+        while (sn != -1 && (isdigit(s[sn]) || s[sn] == '.')) next();
+        return;
+    }
     else bad = true;
     next();
 }
@@ -40,7 +52,7 @@ void expr() {
     add();
     if (bad || sn==-1) return;
 
-    else if (s[sn] == '+' || s[sn] == '-') {
+    else if (s[sn] == '+' || s[sn] == '-' || s[sn] == '>' || s[sn] == '<' || s[sn] == '==') {
         next();
         add();
     }
