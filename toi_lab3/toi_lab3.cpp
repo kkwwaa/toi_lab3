@@ -1,21 +1,21 @@
 #include <iostream>
 #include <string>
 #include <Windows.h>
-using namespace std;//!!! Скобки у отриц не обязательны для удобства и униерсальности
+using namespace std;//!!! Скобки у отриц не обязательны для удобства и униерсальности. Отрицательные выр-ия не пред-ны, домножайте на -1
 
 int sn = 0;
-string s = "a-(21.1/b+c)*(-1)";
+string s = "a-(21.1/b+c)";
 bool bad = false;
 bool in_comp = false;
 
-void expr_comp();
-void expr();
-void add();
-void fact();
-void number();
-void sign_number();
+void PartOfComparativeExpression();
+void Expression();
+void Addend();
+void Factor();
+void Number();
+void SignedNumber();
 
-void error(string s) {
+void Error(string s) {
     if (!bad) cout << "Обнаружена ошибка в выражении: " << s << "\nПрограмма прекращает работу\n";
 }
 
@@ -32,67 +32,75 @@ bool is_digit1_9(char c) {
     return c >= '1' && c <= '9';
 }
 
+bool is_digit(char c) {
+    return c >= '0' && c <= '9';
+}
+
+bool is_alpha(char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
 // <Number> ::= <Digit> {<Digit> | '0'}
-void number() {
+void Number() {
     if (sn == -1 || !is_digit1_9(s[sn])) {
-        error("Число должно начинаться с 1-9");
+        Error("Число должно начинаться с 1-9");
         bad = true;
         return;
     }
     next();
 
-    while (sn != -1 && (isdigit(s[sn]) || s[sn] == '0')) {
+    while (sn != -1 && (is_digit(s[sn]) || s[sn] == '0')) {
         next();
     }
 }
 
 // <Double_Number> ::= (<Digit> | '0') '.' {(<Digit> | '0')}
-void double_number() {
+void DoubleNumber() {
     bad = false;
     next();
 
-    if (sn == -1 || !isdigit(s[sn])) {
-        error("Ожидалась цифра после '.' в дробном числе");
+    if (sn == -1 || !is_digit(s[sn])) {
+        Error("Ожидалась цифра после '.' в дробном числе");
         bad = true;
         return;
     }
 
-    while (sn != -1 && (isdigit(s[sn]) || s[sn] == '0')) {
+    while (sn != -1 && (is_digit(s[sn]) || s[sn] == '0')) {
         next();
     }
 }
 
 // <Sign_Number> ::= '-' (<Number> | <Double_Number>)
-void sign_number() {
+void SignedNumber() {
     next();
 
     if (sn == -1) {
-        error("Нет числа или переменной после '-'");
+        Error("Нет числа или переменной после '-'");
         bad = true;
         return;
     }
 
-    if (isdigit(s[sn]) || s[sn] == '0') {
+    if (is_digit(s[sn]) || s[sn] == '0') {
         if (s[sn] == '0') {
             next();
-            if (sn != -1 && s[sn] == '.') double_number();
+            if (sn != -1 && s[sn] == '.') DoubleNumber();
         }
         else {
-            number();
-            if (sn != -1 && s[sn] == '.') double_number();
+            Number();
+            if (sn != -1 && s[sn] == '.') DoubleNumber();
         }
     }
-    else if (isalpha(s[sn])) next();
+    else if (is_alpha(s[sn])) next();
     else {
-        error("Неверный знаковый номер");
+        Error("Неверный знаковый номер");
         bad = true;
     }
 }
 
 // <Factor> ::= <Letter> | <Number> | '(' <Expression> ')' | <Sign_Number>
-void fact() {
+void Factor() {
     if (sn == -1) {
-        error("Конец строки в множителе");
+        Error("Конец строки в множителе");
         bad = true;
         return;
     }
@@ -100,119 +108,115 @@ void fact() {
     if (s[sn] == '(') {
         if (sn == 0) in_comp = true;
         next();
-        expr();
+        Expression();
         if (sn == -1 || s[sn] != ')') {
-            error("Отсутствует закрывающая скобка в множителе");
+            Error("Отсутствует закрывающая скобка в множителе");
             bad = true;
             return;
         }
         next();
     }
     else if (s[sn] == '-') {
-        sign_number();
+        SignedNumber();
     }
-    else if (isalpha(s[sn])) {
+    else if (is_alpha(s[sn])) {
         next();
     }
-    else if (isdigit(s[sn]) || s[sn] == '0') {
+    else if (is_digit(s[sn]) || s[sn] == '0') {
         if (s[sn] == '0') {
             next();
-            if (sn != -1 && s[sn] == '.') double_number();
-            else if (isdigit(s[sn])){
-                error("Отсутствует точка после 0 в числе");
+            if (sn != -1 && s[sn] == '.') DoubleNumber();
+            else if (is_digit(s[sn])){
+                Error("Отсутствует точка после 0 в числе");
                 bad = true;
                 return;
             }
         }
         else {
-            number();
-            if (sn != -1 && s[sn] == '.') double_number();
+            Number();
+            if (sn != -1 && s[sn] == '.') DoubleNumber();
         }
     }
     else {
-        error("Неверный множитель");
+        Error("Неверный множитель");
         bad = true;
     }
 }
 
-// <Added> ::= <Factor> {('*' | '/') <Factor>}
-void add() {
-    fact();
+// <Addend> ::= <Factor> {('*' | '/') <Factor>}
+void Addend() {
+    Factor();
     if (bad || sn == -1) return;
 
     while (sn != -1 && (s[sn] == '*' || s[sn] == '/')) {
         next();
-        fact();
+        Factor();
     }
 }
 
-// <Expression> ::= <Added> {('+' | '-') <Added>}
-void expr() {
-    add();
+// <Expression> ::= <Addend> {('+' | '-') <Addend>}
+void Expression() {
+    Addend();
     if (bad || sn == -1) return;
 
     while (sn != -1 && (s[sn] == '+' || s[sn] == '-')) {
         next();
-        add();
+        Addend();
     }
 }
 
-// <Expression_comp> ::= '('Expression')' ('>' | '<' | '=') '('Expression')'
-void expr_comp() {
+// <PartOfComparativeExpression> ::= ('>' | '<' | '=') '('Expression')'
+void PartOfComparativeExpression() {
     if (sn == -1 || !(s[sn] == '>' || s[sn] == '<' || s[sn] == '=')) {
-        error("Неверный оператор сравнения");
+        Error("Неверный оператор сравнения");
         bad = true;
         return;
     }
     next();
 
     if (sn == -1 || s[sn] != '(') {
-        error("Ожидалась '(' после оператора сравнения");
+        Error("Ожидалась '(' после оператора сравнения");
         bad = true;
         return;
     }
     next();
-    expr();
+    Expression();
     if (sn == -1 || s[sn] != ')') {
-        error("Отсутствует закрывающая скобка после первого выражения");
+        Error("Отсутствует закрывающая скобка после первого выражения");
         bad = true;
         return;
     }
     next();
 }
 
-int main() {
-    setlocale(LC_ALL, "Russian");
-    SetConsoleOutputCP(1251);
-    SetConsoleCP(1251);
-
-    cout << s << '\n';
-
+void BooleanExpressionNot() {
     if (s[sn] == 'н') {
         next();
-        if (sn != -1 && s[sn] == 'е') { // Исправлено || на &&
+        if (sn != -1 && s[sn] == 'е') {
             next();
             if (sn != -1 && s[sn] == '(') {
                 next();
-                expr();
-                expr_comp();
+                Expression();
+                PartOfComparativeExpression();
                 if (sn != -1 && s[sn] == ')') next();
                 else {
-                    error("Отсутствует закрывающая скобка после 'не'");
+                    Error("Отсутствует закрывающая скобка после 'не'");
                     bad = true;
                 }
             }
             else {
-                error("Ожидалась '(' после 'не'");
+                Error("Ожидалась '(' после 'не'");
                 bad = true;
             }
         }
         else {
-            error("Ожидалась 'е' после 'н' для 'не'");
+            Error("Ожидалась 'е' после 'н' для 'не'");
             bad = true;
         }
     }
-        
+}
+
+void BooleanExpressionAndOr() {
     // Проверка "и" & "или"
     if (sn != -1 && s[sn] == 'и') {
         next();
@@ -220,32 +224,32 @@ int main() {
             next();
             if (sn != -1 && s[sn] == '(') {
                 next();
-                expr();
+                Expression();
                 if (sn != -1 && s[sn] == ')') {
                     next();
-                    expr_comp();
+                    PartOfComparativeExpression();
                     if (sn != -1 && s[sn] == ',') {
                         next();
-                        expr();
-                        expr_comp();
+                        Expression();
+                        PartOfComparativeExpression();
                         if (sn != -1 && s[sn] == ')') next();
                         else {
-                            error("Отсутствует закрывающая скобка после второго выражения в 'и'");
+                            Error("Отсутствует закрывающая скобка после второго выражения в 'и'");
                             bad = true;
                         }
                     }
                     else {
-                        error("Ожидалась ',' в выражении 'и'");
+                        Error("Ожидалась ',' в выражении 'и'");
                         bad = true;
                     }
                 }
                 else {
-                    error("Отсутствует закрывающая скобка после первого выражения в 'и'");
+                    Error("Отсутствует закрывающая скобка после первого выражения в 'и'");
                     bad = true;
                 }
             }
             else {
-                error("Отсутствует открывающая скобка первого выражения в 'и'");
+                Error("Отсутствует открывающая скобка первого выражения в 'и'");
                 bad = true;
             }
         }
@@ -255,46 +259,58 @@ int main() {
                 next();
                 if (sn != -1 && s[sn] == '(') {
                     next();
-                    expr();
-                    expr_comp();
+                    Expression();
+                    PartOfComparativeExpression();
                     if (sn != -1 && s[sn] == ',') {
                         next();
-                        expr();
-                        expr_comp();
+                        Expression();
+                        PartOfComparativeExpression();
                         if (sn != -1 && s[sn] == ')') next();
                         else {
-                            error("Отсутствует закрывающая скобка после второго выражения в 'или'");
+                            Error("Отсутствует закрывающая скобка после второго выражения в 'или'");
                             bad = true;
                         }
                     }
                     else {
-                        error("Ожидалась ',' в выражении 'или'");
+                        Error("Ожидалась ',' в выражении 'или'");
                         bad = true;
                     }
                 }
                 else {
-                    error("Ожидалась '(' после 'или'");
+                    Error("Ожидалась '(' после 'или'");
                     bad = true;
                 }
             }
             else {
-                error("Ожидалась 'и' после 'л' для 'или'");
+                Error("Ожидалась 'и' после 'л' для 'или'");
                 bad = true;
             }
         }
         else {
-            error("Ожидалась 'л' после 'и' для 'или'");
+            Error("Ожидалась 'л' после 'и' для 'или'");
             bad = true;
         }
     }
+}
+
+int main() {
+    setlocale(LC_ALL, "Russian");
+    SetConsoleOutputCP(1251);
+    SetConsoleCP(1251);
+
+    cout << s << '\n';
+
+    BooleanExpressionNot();
+    BooleanExpressionAndOr();
 
     // Первичный вызов
-    if (sn!=-1)expr();
-    if (in_comp && sn != -1) expr_comp();
+    if (sn!=-1)Expression();
+    //Если найдено сравнение, то переквалифицируем в сравнительное выражение
+    if (in_comp && sn != -1) PartOfComparativeExpression();
 
     // Проверка на оставшиеся символы
     if (sn != -1) {
-        error("Остались лишние символы в конце выражения");
+        Error("Остались лишние символы в конце выражения");
         bad = true;
     }
 
