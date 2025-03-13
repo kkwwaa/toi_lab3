@@ -4,7 +4,7 @@
 using namespace std;//!!! Скобки у отриц не обязательны для удобства и униерсальности. Отрицательные выр-ия не пред-ны, домножайте на -1
 
 int sn = 0;
-string s = "(4)=(9)";
+string s = "и((4+2-1)=(9)(5)=(0))";
 //9-2)=(q/2)";
 bool bad = false;
 bool in_comp = false, sign = false;
@@ -29,6 +29,7 @@ void Delete(TreeNode*& R) {
         Delete(R->left);
         Delete(R->right);
         delete R;
+        R = nullptr;
     }
 }
 
@@ -204,7 +205,7 @@ void Addend(TreeNode*& R) {
 // <Expression> ::= <Addend> {('+' | '-') <Addend>}
 void Expression(TreeNode*& R) {
     Addend(R);
-    TreeNode* O = R;
+    TreeNode* O;
 
     while (sn != -1 && (s[sn] == '+' || s[sn] == '-')) {
         TreeNode* O = new TreeNode;
@@ -266,25 +267,25 @@ void BooleanExpressionNot(TreeNode*& R) {
     }
 }
 
-void BooleanExpression(TreeNode*& R) {
+void BooleanExpression(TreeNode*& R) {//(...)=(...), (...)=(...)
     if (sn != -1 && s[sn] == '(') {
         next();
         Expression(R);
         if (sn != -1 && s[sn] == ')') {
             next();
-            PartOfComparativeExpression(R);
+            PartOfComparativeExpression(R);//=(...)
             if (sn != -1 && s[sn] == ',') {
+                TreeNode* O = new TreeNode;
+                Insert(O);
+                O->left = R;
+                R = O;
                 next();
                 if (sn != -1 && s[sn] == '(') {
                     next();
-                    Expression(R);
+                    Expression(O->right);
                     if (sn != -1 && s[sn] == ')') {
                         next();
-                        PartOfComparativeExpression(R);
-                        if (sn != -1 && s[sn] == ')') next();
-                        else {
-                            Error("Отсутствует закрывающая скобка после второго выражения в 'и'");
-                        }
+                        PartOfComparativeExpression(O->right);
                     }
                     else {
                         Error("Ожидалась ')' в выражении 'и'");
@@ -312,6 +313,10 @@ void BooleanExpressionAndOr(TreeNode*& R) {
         if (sn != -1 && s[sn] == '(') {
             next();
             BooleanExpression(R);
+            if (sn != -1 && s[sn] == ')') next();
+            else {
+                Error("Отсутствует закрывающая скобка после второго выражения в 'и'");
+            }
         }
         else if (sn != -1 && s[sn] == 'л') {
             next();
@@ -320,6 +325,10 @@ void BooleanExpressionAndOr(TreeNode*& R) {
                 if (sn != -1 && s[sn] == '(') {
                     next();
                     BooleanExpression(R);
+                    if (sn != -1 && s[sn] == ')') next();
+                    else {
+                        Error("Отсутствует закрывающая скобка после второго выражения в 'и'");
+                    }
                 }
                 else {
                     Error("Ожидалась '(' после 'или'");
