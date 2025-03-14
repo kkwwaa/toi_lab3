@@ -2,15 +2,15 @@
 #include <string>
 #include <Windows.h>
 #include <map>
-using namespace std; //!!! Скобки у отриц не обязательны для удобства и универсальности. Отрицательные выр-ия не пред-ны, домножайте на -1
+using namespace std;
 
 // Глобальные переменные для работы с парсером
 int sn = 0; // Текущая позиция в строке
-string s = "и((9)!(1),(2)>(3))"; // Входная строка для разбора
+string s = ""; // Входная строка для разбора
 //9-2)=(q/2)";
 bool bad = false; // Флаг ошибки
 bool in_comp = false, sign = false, OperatorOr = false; // Флаги для отслеживания состояния парсинга
-map<char, int> perms;
+map<char, double> perms;
 
 #pragma region Additional
 // Структура узла дерева
@@ -51,16 +51,13 @@ void Write(TreeNode*& R) {
 // Функция обработки ошибок
 void Error(string s) {
     if (!bad) cout << "Обнаружена ошибка в выражении: " << s << "\nПрограмма прекращает работу\n"; // Выводим сообщение об ошибке, если ошибка еще не была зафиксирована
-    Delete(Root); // Очищаем дерево
     bad = true; // Устанавливаем флаг ошибки
-} //!!!добавить ошибку с пробелами
+}
 
 // Функция перехода к следующему символу
 void next() {
     if (sn == -1 || sn >= s.size() - 1) sn = -1; // Проверяем, не вышли ли за границы строки, если да — устанавливаем sn в -1 (конец строки)
-    else {
-        sn++; // Увеличиваем индекс текущего символа
-    }
+    else sn++; // Увеличиваем индекс текущего символа
 }
 
 // Проверка, является ли символ цифрой от 1 до 9 (0 обрабатывается отдельно)
@@ -76,11 +73,11 @@ bool is_digit(char c) {
 // Проверка, является ли символ буквой (латинской)
 bool is_alpha(char c) {
     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
-        if (perms.count(s[sn]) == 0) {
-            int input;
-            cout << "Введите значение переменной " << s[sn] << " : ";
+        if (perms.count(c) == 0) {// Обеспечиваем уникальность
+            string input;
+            cout << "Введите значение переменной " << s[sn] << " : ";// Ввод переменной
             cin >> input;
-            perms[s[sn]] = input;
+            perms[s[sn]] = stod(input);// Включение в словарь
         }
         return true;
     }
@@ -95,7 +92,7 @@ void Expression(TreeNode*& R);
 void Addend(TreeNode*& R);
 void Factor(TreeNode*& R);
 void Number(TreeNode*& R);
-void SignedNumber(TreeNode*& R);
+void SignedElement(TreeNode*& R);
 #pragma endregion
 
 #pragma region Numbers
@@ -126,8 +123,8 @@ void PartOfDoubleNumber(TreeNode*& R) {
     }
 }
 
-// Функция обработки знакового числа: <Sign_Number> ::= '-' (<Number> | <Double_Number>)
-void SignedNumber(TreeNode*& R) {
+// Функция обработки знакового числа: <SignedElement> ::= '-' (<Number> | <DoubleNumber>)
+void SignedElement(TreeNode*& R) {
     sign = true; // Устанавливаем флаг знака
     next(); // Переходим к следующему символу
 
@@ -153,16 +150,18 @@ void SignedNumber(TreeNode*& R) {
     }
     else if (is_alpha(s[sn])) { // Если текущий символ — буква
         Insert(R); // Создаем узел и записываем букву
+        R->inf = "-"+R->inf;
+        perms[s[sn]] *= -1;
         next(); // Переходим к следующему символу
     }
     else { // Если символ не цифра и не буква
-        Error("Неверное знаковое число"); // Выдаем ошибку
+        Error("Неверное знаковый элемент"); // Выдаем ошибку
     }
     sign = false; // Сбрасываем флаг знака
 }
 #pragma endregion
 
-// Функция обработки множителя: <Factor> ::= <Letter> | <Number> | '(' <Expression> ')' | <Sign_Number>
+// Функция обработки множителя: <Factor> ::= <Letter> | <Number> | '(' <Expression> ')' | <SignedElement>
 void Factor(TreeNode*& R) {
     if (sn == -1) { // Если конец строки
         Error("Конец строки в множителе"); // Выдаем ошибку
@@ -180,7 +179,7 @@ void Factor(TreeNode*& R) {
         next(); // Переходим к следующему символу
     }
     else if (s[sn] == '-') { // Если текущий символ — минус
-        SignedNumber(R); // Обрабатываем знаковое число
+        SignedElement(R); // Обрабатываем знаковое число
     }
     else if (is_digit(s[sn])) { // Если текущий символ — цифра
         if (s[sn] == '0') { // Если цифра 0
@@ -209,7 +208,10 @@ void Factor(TreeNode*& R) {
 // Функция обработки слагаемого: <Addend> ::= <Factor> {('*' | '/') <Factor>}
 void Addend(TreeNode*& R) {
     Factor(R); // Обрабатываем первый множитель
-    if (bad || sn == -1) return; // Если ошибка или конец строки, выходим
+    if (bad || sn == -1) {
+        R = nullptr;
+        return; // Если ошибка или конец строки, выходим
+    }
     while (sn != -1 && (s[sn] == '*' || s[sn] == '/')) { // Пока не конец строки и текущий символ — умножение или деление
         TreeNode* O = new TreeNode; // Создаем новый узел для оператора
         Insert(O); // Записываем оператор в узел
@@ -223,7 +225,6 @@ void Addend(TreeNode*& R) {
 // Функция обработки выражения: <Expression> ::= <Addend> {('+' | '-') <Addend>}
 void Expression(TreeNode*& R) {
     Addend(R); // Обрабатываем первое слагаемое
-    TreeNode* O; // Временная переменная для нового узла
 
     while (sn != -1 && (s[sn] == '+' || s[sn] == '-')) { // Пока не конец строки и текущий символ — плюс или минус
         TreeNode* O = new TreeNode; // Создаем новый узел для оператора
@@ -236,7 +237,7 @@ void Expression(TreeNode*& R) {
 }
 
 #pragma region Expressions
-// Функция обработки части сравнительного выражения: <PartOfComparativeExpression> ::= ('>' | '<' | '=') '('Expression')'
+// Функция обработки части сравнительного выражения: <PartOfComparativeExpression> ::= ('>' | '<' | '=') '('<Expression>')'
 void PartOfComparativeExpression(TreeNode*& R) {
     if (sn == -1 || !(s[sn] == '>' || s[sn] == '<' || s[sn] == '=' || s[sn] == '!')) { // Если конец строки или текущий символ не оператор сравнения
         Error("Неверный оператор сравнения"); // Выдаем ошибку
@@ -375,28 +376,30 @@ void BooleanExpressionAndOr(TreeNode*& R) {
 }
 #pragma endregion
 
+// Вычисление выражения по дереву
 double Evaluate(TreeNode* R) {
     if (R == nullptr) return 0.0;
 
     // Листовой узел (число или переменная)
     if (R->left == nullptr && R->right == nullptr) {
-        if (is_alpha(R->inf[0])) { // Переменная
-            return perms[R->inf[0]];
+        if (R->inf[0] == '-') {
+            if (is_alpha(R->inf[1])) return perms[R->inf[1]];// Знаковая переменная
         }
+        if (is_alpha(R->inf[0])) return perms[R->inf[0]];// Переменная
         else { // Число
             return stod(R->inf); // Используем stod для преобразования строки в double
         }
     }
-    else { // Узел с оператором
+    else { // Осуществляем логику логического оператора НЕ
         if (R->inf == "не") {
             double rightVal = Evaluate(R->right);
             return (rightVal != 0.0) ? 0.0 : 1.0;
         }
 
-        double leftVal = Evaluate(R->left);
+        double leftVal = Evaluate(R->left);// Достаем слагаемые/множители
         double rightVal = Evaluate(R->right);
 
-        if (R->inf == "+") return leftVal + rightVal;
+        if (R->inf == "+") return leftVal + rightVal;// Осуществляем логику арифметических операторов
         if (R->inf == "-") return leftVal - rightVal;
         if (R->inf == "*") return leftVal * rightVal;
         if (R->inf == "/") {
@@ -406,12 +409,12 @@ double Evaluate(TreeNode* R) {
             return leftVal / rightVal;
         }
 
-        if (R->inf == ">") return (leftVal > rightVal) ? 1.0 : 0.0;
+        if (R->inf == ">") return (leftVal > rightVal) ? 1.0 : 0.0;// Осуществляем логику операторов сравнения
         if (R->inf == "<") return (leftVal < rightVal) ? 1.0 : 0.0;
         if (R->inf == "=") return (leftVal == rightVal) ? 1.0 : 0.0;
         if (R->inf == "!") return (leftVal != rightVal) ? 1.0 : 0.0;
 
-        if (R->inf == "и") return (leftVal != 0.0 && rightVal != 0.0) ? 1.0 : 0.0;
+        if (R->inf == "и") return (leftVal != 0.0 && rightVal != 0.0) ? 1.0 : 0.0; // Осуществляем логику оставшихся логических операторов
         if (R->inf == "или") return (leftVal != 0.0 || rightVal != 0.0) ? 1.0 : 0.0;
 
         return 0.0;
@@ -423,7 +426,11 @@ int main() {
     setlocale(LC_ALL, "Russian"); // Устанавливаем локаль для вывода кириллицы
     SetConsoleOutputCP(1251); // Устанавливаем кодировку консоли для вывода
     SetConsoleCP(1251); // Устанавливаем кодировку консоли для ввода
-    cout << s << '\n'; // Выводим входную строку
+
+    cout <<"Памятка по правилам:\n1. Вводите выражения без пробелов\n2. Используйте скобки для приоритетов операций\n3. Можете использовать отрицательные числа и переменные\n4. Не ставьте знак минуса перед выражениями, умножьте на (-1)\n5. Используйте знаки '>, <, =, !' и конструкцию (...)?(...) для сравнений\n6. Используйте оперторы 'не, и, или' для логических выражений\n7. Используйте конструкцию 'не/и/или'((...)?(...),(...)?(...)) для логических выражений\n8. Множественные операции доступны только для арифметики\n9. Не смешивайте виды выражений\n10. Дробные числа записывайте с запятой\nВведите выражение (без пробелов): "; // Выводим правила и просим входную строку
+    string input;
+    cin >> input;
+    s += input;
 
     BooleanExpressionNot(Root); // Обрабатываем отрицание
     BooleanExpressionAndOr(Root); // Обрабатываем логические операторы "и" и "или"
@@ -440,10 +447,12 @@ int main() {
     }
 
     if (!bad) {
-        cout << "Строка корректна\n"; // Если ошибок нет, выводим сообщение об успешном разборе
+        cout << "Строка синтаксически правильна\n"; // Если ошибок нет, выводим сообщение об успешном разборе
+        cout << "Построено дерево для выражения (вывод в форме ОПЗ): ";
         Write(Root); // Если дерево не пустое, выводим его содержимое
         cout << "\nРезультат вычисления: " << Evaluate(Root);
     }
+    else Delete(Root); // Очищаем дерево
 
     Delete(Root);
     return 0; // Завершаем программу
