@@ -486,8 +486,6 @@ int main() {
 			cin >> repeat;
 		}
 	}
-	else Delete(Root); // Очищаем дерево
-
 	Delete(Root);
 	return 0; // Завершаем программу
 }
