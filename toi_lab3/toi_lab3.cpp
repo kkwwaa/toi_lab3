@@ -6,10 +6,10 @@ using namespace std; //!!! Скобки у отриц не обязательны для удобства и универса
 
 // Глобальные переменные для работы с парсером
 int sn = 0; // Текущая позиция в строке
-string s = "(9)!(1)"; // Входная строка для разбора
+string s = "и((9)!(1),(2)>(3))"; // Входная строка для разбора
 //9-2)=(q/2)";
 bool bad = false; // Флаг ошибки
-bool in_comp = false, sign = false; // Флаги для отслеживания состояния парсинга
+bool in_comp = false, sign = false, OperatorOr = false; // Флаги для отслеживания состояния парсинга
 map<char, int> perms;
 
 #pragma region Additional
@@ -270,8 +270,12 @@ void BooleanExpressionNot(TreeNode*& R) {
             next(); // Переходим к следующему символу
             if (sn != -1 && s[sn] == '(') { // Если следующий символ — открывающая скобка
                 next(); // Переходим к следующему символу
-                Expression(R); // Обрабатываем выражение
-                PartOfComparativeExpression(R); // Обрабатываем сравнение
+
+                TreeNode* O = new TreeNode; // Создаем новый узел для оператора
+                O->inf="не"; // Записываем оператор в узел
+                Expression(O->right); // Обрабатываем выражение
+                PartOfComparativeExpression(O->right); // Обрабатываем сравнение
+                R = O;
                 if (sn != -1 && s[sn] == ')') next(); // Если есть закрывающая скобка, переходим к следующему символу
                 else { // Если нет закрывающей скобки
                     Error("Отсутствует закрывающая скобка после 'не'"); // Выдаем ошибку
@@ -297,7 +301,8 @@ void BooleanExpression(TreeNode*& R) { //(...)=(...), (...)=(...)
             PartOfComparativeExpression(R); // Обрабатываем сравнение =(...)
             if (sn != -1 && s[sn] == ',') { // Если есть запятая (для "и")
                 TreeNode* O = new TreeNode; // Создаем новый узел для оператора
-                Insert(O); // Записываем оператор в узел
+                if (OperatorOr) O->inf = "или";
+                else O->inf = "и";
                 O->left = R; // Левое поддерево — текущее выражение
                 R = O; // Обновляем корень дерева
                 next(); // Переходим к следующему символу
@@ -343,10 +348,10 @@ void BooleanExpressionAndOr(TreeNode*& R) {
             next(); // Переходим к следующему символу
             if (sn != -1 && s[sn] == 'и') { // Если следующий символ — 'и'
                 next(); // Переходим к следующему символу
+                OperatorOr = true;
                 if (sn != -1 && s[sn] == '(') { // Если следующий символ — открывающая скобка
                     next(); // Переходим к следующему символу
                     BooleanExpression(R); // Обрабатываем выражение
-
                     if (sn != -1 && s[sn] == ')') next(); // Если есть закрывающая скобка, переходим к следующему символу
                     else { // Если нет закрывающей скобки
                         Error("Отсутствует закрывающая скобка после второго выражения в 'и'"); // Выдаем ошибку
@@ -383,19 +388,33 @@ double Evaluate(TreeNode* R) {
         }
     }
     else { // Узел с оператором
+        if (R->inf == "не") {
+            double rightVal = Evaluate(R->right);
+            return (rightVal != 0.0) ? 0.0 : 1.0;
+        }
+
         double leftVal = Evaluate(R->left);
         double rightVal = Evaluate(R->right);
-        char op = R->inf[0]; // Оператор — один символ
 
-        if (op == '+') return leftVal + rightVal;
-        if (op == '-') return leftVal - rightVal;
-        if (op == '*') return leftVal * rightVal;
-        if (op == '/') {
+        if (R->inf == "+") return leftVal + rightVal;
+        if (R->inf == "-") return leftVal - rightVal;
+        if (R->inf == "*") return leftVal * rightVal;
+        if (R->inf == "/") {
             if (rightVal == 0.0) {
                 Error("Ошибка: деление на ноль\n");
             }
             return leftVal / rightVal;
         }
+
+        if (R->inf == ">") return (leftVal > rightVal) ? 1.0 : 0.0;
+        if (R->inf == "<") return (leftVal < rightVal) ? 1.0 : 0.0;
+        if (R->inf == "=") return (leftVal == rightVal) ? 1.0 : 0.0;
+        if (R->inf == "!") return (leftVal != rightVal) ? 1.0 : 0.0;
+
+        if (R->inf == "и") return (leftVal != 0.0 && rightVal != 0.0) ? 1.0 : 0.0;
+        if (R->inf == "или") return (leftVal != 0.0 || rightVal != 0.0) ? 1.0 : 0.0;
+
+        return 0.0;
     }
 }
 
