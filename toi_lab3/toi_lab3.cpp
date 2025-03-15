@@ -198,7 +198,7 @@ void Factor(TreeNode*& R) {
 			Insert(R); // Создаем узел и записываем 0
 			next(); // Переходим к следующему символу
 			if (sn != -1 && s[sn] == ',') PartOfDoubleNumber(R); // Если есть точка, обрабатываем дробную часть
-			else if (is_digit(s[sn])) { // Если следующий символ — цифра (ошибка, так как 0 не может быть началом числа > 0)
+			else if (sn != -1 && is_digit(s[sn])) { // Если следующий символ — цифра (ошибка, так как 0 не может быть началом числа > 0)
 				Error("Отсутствует точка после 0 в числе"); // Выдаем ошибку
 				return;
 			}
@@ -415,7 +415,7 @@ double Evaluate(TreeNode* R) {
 		if (R->inf == "*") return leftVal * rightVal;
 		if (R->inf == "/") {
 			if (rightVal == 0.0) {
-				Error("Ошибка: деление на ноль\n");
+				Error("\nОшибка: деление на ноль\n");
 			}
 			return leftVal / rightVal;
 		}
@@ -468,22 +468,24 @@ int main() {
 	if (!bad) {
 		end();
 		string repeat;
-		cout << "Хотите ввести переменные повторно? (д/н)";
-		cin >> repeat;
-		while (repeat == "д") {
-			for (map<char, double>::iterator it = variables.begin(); it != variables.end(); ++it) {
-				string input;
-				cout << "Введите значение переменной " << it->first << " : "; // Используем ключ из variables
-				cin >> input;
-				// Заменяем запятую на точку для stod
-				for (char& ch : input) {
-					if (ch == ',') ch = '.';
-				}
-				variables[it->first] = stod(input); // Обновляем значение в словаре
-			}
-			end(); // Пересчитываем выражение с новыми значениями
-			cout << "Хотите ввести переменные повторно? (д/н)";
+		if (variables.size() > 0) {
+			cout << "\nХотите ввести переменные повторно? (д/н): ";
 			cin >> repeat;
+			while (repeat == "д") {
+				for (map<char, double>::iterator it = variables.begin(); it != variables.end(); ++it) {
+					string input;
+					cout << "Введите значение переменной " << it->first << " : "; // Используем ключ из variables
+					cin >> input;
+					// Заменяем запятую на точку для stod
+					for (char& ch : input) {
+						if (ch == ',') ch = '.';
+					}
+					variables[it->first] = stod(input); // Обновляем значение в словаре
+				}
+				end(); // Пересчитываем выражение с новыми значениями
+				cout << "\nХотите ввести переменные повторно? (д/н): ";
+				cin >> repeat;
+			}
 		}
 	}
 	Delete(Root);
